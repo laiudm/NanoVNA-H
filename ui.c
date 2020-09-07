@@ -680,8 +680,6 @@ void show_version(void)
          ili9341_set_foreground(DEFAULT_FG_COLOR);
          plot_printf(buffer, sizeof(buffer), "vbat_offset   %u mV", config.vbat_offset_mv);
          ili9341_drawstring(buffer, x, y + (0 * (FONT_STR_HEIGHT + line_spacing)), false);
-         plot_printf(buffer, sizeof(buffer), "vbat_top       %u mV", DEFAULT_BATTERY_TOP_MV);
-         ili9341_drawstring(buffer, x, y + (1 * (FONT_STR_HEIGHT + line_spacing)), false);
 
          plot_printf(buffer, sizeof(buffer), "%d.%03dV %3d%%", bat_mv / 1000, bat_mv % 1000, ((bat_mv - DEFAULT_BATTERY_BOTTOM_MV) * 100) / (DEFAULT_BATTERY_TOP_MV - DEFAULT_BATTERY_BOTTOM_MV));
          ili9341_set_foreground(bat_mv < DEFAULT_BATTERY_WARNING_MV ? DEFAULT_LOW_BAT_COLOR : DEFAULT_NORMAL_BAT_COLOR);

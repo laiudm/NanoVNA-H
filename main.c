@@ -740,41 +740,46 @@ VNA_SHELL_FUNCTION(cmd_power)
 #ifdef __USE_RTC__
    VNA_SHELL_FUNCTION(cmd_time)
    {
-      (void)argc;
-      (void)argv;
+   	(void)argc;
+   	(void)argv;
 
-      uint32_t  dt_buf[2];
+   	uint32_t dt_buf[2];
 
-      dt_buf[0] = rtc_get_tr_bcd(); // TR should be read first for sync
-      dt_buf[1] = rtc_get_dr_bcd(); // DR should be read second
+   	dt_buf[0] = rtc_get_tr_bcd(); // TR should be read first for sync
+   	dt_buf[1] = rtc_get_dr_bcd(); // DR should be read second
 
-      static const uint8_t idx_to_time[] = {6,5,4,2,  1,  0};
-      static const char       time_cmd[] = "y|m|d|h|min|sec";
-      //            0    1   2       4      5     6
-      //time[]      = {sec, min, hr, 0, day, month, year, 0}
-      uint8_t *time = (uint8_t *)dt_buf;
+   	static const uint8_t idx_to_time[] = {6,5,4,2,  1,  0};
+   	static const char       time_cmd[] = "y|m|d|h|min|sec";
 
-      if (argc < 1)
-         goto showdt;
+   	//            0    1   2       4      5     6
+   	// time[] ={sec, min, hr, 0, day, month, year, 0}
 
-      if (argc < 2)
-         goto usage;
+   	uint8_t *time = (uint8_t *)dt_buf;
 
-      const int idx      = get_str_index(argv[0], time_cmd);
+   	if (argc >= 3 && get_str_index(argv[0], "b") == 0)
+   	{
+   		rtc_set_time(my_atoui(argv[1]), my_atoui(argv[2]));
+   		return;
+   	}
 
-      const uint32_t val = my_atoui(argv[1]);
-      if (idx < 0 || val > 99)
-         goto usage;
+   	if (argc != 2)
+   		goto usage;
 
-      // Write byte value in struct
-      time[idx_to_time[idx]] = ((val / 10) << 4) | (val % 10); // value in bcd format
-      rtc_set_time(dt_buf[1], dt_buf[0]);
-      return;
+   	const int idx = get_str_index(argv[0], time_cmd);
+
+   	const uint32_t val = my_atoui(argv[1]);
+   	if (idx < 0 || val > 99)
+   		goto usage;
+
+   	// Write byte value in struct
+   	time[idx_to_time[idx]] = ((val / 10) << 4) | (val % 10); // value in bcd format
+   	rtc_set_time(dt_buf[1], dt_buf[0]);
+
+   	return;
 
    usage:
-      shell_printf("usage: time [%s] 0-99\r\n", time_cmd);
-   showdt:
-      shell_printf("20%02X/%02X/%02X %02X:%02X:%02X\r\n", time[6], time[5], time[4], time[2], time[1], time[0]);
+		shell_printf("20%02X/%02X/%02X %02X:%02X:%02X\r\n", time[6], time[5], time[4], time[2], time[1], time[0]);
+		shell_printf("usage: time {[%s] 0-99} or {b 0xYYMMDD 0xHHMMSS}\r\n", time_cmd);
    }
 #endif
 
@@ -2391,76 +2396,89 @@ float get_trace_refpos(int t)
 
 VNA_SHELL_FUNCTION(cmd_trace)
 {
-  int t;
-  if (argc <= 0)
-  {
-    for (t = 0; t < TRACES_MAX; t++) {
-      if (trace[t].enabled) {
-        const char *type = get_trace_typename(t);
-        const char *channel = trc_channel_name[trace[t].channel];
-        float scale = get_trace_scale(t);
-        float refpos = get_trace_refpos(t);
-        shell_printf("%d %s %s %+f %+f\r\n", t, type, channel, scale, refpos);
-      }
-    }
-    return;
-  }
+	int t;
 
-  if (strcmp(argv[0], "all") == 0 &&
-      argc > 1 && strcmp(argv[1], "off") == 0) {
-  for (t = 0; t < TRACES_MAX; t++)
-      set_trace_type(t, TRC_OFF);
-    goto exit;
-  }
+	if (argc <= 0)
+	{
+		for (t = 0; t < TRACES_MAX; t++)
+		{
+			if (trace[t].enabled)
+			{
+				const char *type = get_trace_typename(t);
+				const char *channel = trc_channel_name[trace[t].channel];
+				const float scale = get_trace_scale(t);
+				const float refpos = get_trace_refpos(t);
+				shell_printf("%d %s %s %+f %+f\r\n", t, type, channel, scale, refpos);
+			}
+		}
+		return;
+	}
 
-  t = my_atoi(argv[0]);
-  if (t < 0 || t >= TRACES_MAX)
-    goto usage;
+	if (strcmp(argv[0], "all") == 0 && argc > 1 && strcmp(argv[1], "off") == 0)
+	{
+		for (t = 0; t < TRACES_MAX; t++)
+			set_trace_type(t, TRC_OFF);
+		goto exit;
+	}
 
-  if (argc == 1) {
-    const char *type = get_trace_typename(t);
-    const char *channel = trc_channel_name[trace[t].channel];
-    shell_printf("%d %s %s\r\n", t, type, channel);
-    return;
-  }
-#if MAX_TRACE_TYPE != 12
-#error "Trace type enum possibly changed, check cmd_trace function"
-#endif
-  // enum TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_Q, TRC_OFF
-  static const char cmd_type_list[] = "logmag|phase|delay|smith|polar|linear|swr|real|imag|r|x|q|off";
-  int type = get_str_index(argv[1], cmd_type_list);
-  if (type >= 0) {
-    set_trace_type(t, type);
-    goto check_ch_num;
-  }
-  //                                            0      1
-  static const char cmd_scale_ref_list[] = "scale|refpos";
-  if (argc >= 3) {
-    switch (get_str_index(argv[1], cmd_scale_ref_list)) {
-      case 0:
-        //trace[t].scale = my_atof(argv[2]);
-        set_trace_scale(t, my_atof(argv[2]));
-        goto exit;
-      case 1:
-        //trace[t].refpos = my_atof(argv[2]);
-        set_trace_refpos(t, my_atof(argv[2]));
-        goto exit;
-      default:
-        goto usage;
-    }
-  }
+	t = my_atoi(argv[0]);
+	if (t < 0 || t >= TRACES_MAX)
+		goto usage;
+
+	if (argc == 1)
+	{
+		const char *type = get_trace_typename(t);
+		const char *channel = trc_channel_name[trace[t].channel];
+		shell_printf("%d %s %s\r\n", t, type, channel);
+		return;
+	}
+
+	#if (MAX_TRACE_TYPE != 12)
+		#error "Trace type enum possibly changed, check cmd_trace function"
+	#endif
+
+	// enum TRC_LOGMAG, TRC_PHASE, TRC_DELAY, TRC_SMITH, TRC_POLAR, TRC_LINEAR, TRC_SWR, TRC_REAL, TRC_IMAG, TRC_R, TRC_X, TRC_Q, TRC_OFF
+	static const char cmd_type_list[] = "logmag|phase|delay|smith|polar|linear|swr|real|imag|r|x|q|off";
+	int type = get_str_index(argv[1], cmd_type_list);
+	if (type >= 0)
+	{
+		set_trace_type(t, type);
+		goto check_ch_num;
+	}
+
+	//                                            0      1
+	static const char cmd_scale_ref_list[] = "scale|refpos";
+	if (argc >= 3)
+	{
+		switch (get_str_index(argv[1], cmd_scale_ref_list))
+		{
+			case 0:
+				//trace[t].scale = my_atof(argv[2]);
+				set_trace_scale(t, my_atof(argv[2]));
+				goto exit;
+			case 1:
+				//trace[t].refpos = my_atof(argv[2]);
+				set_trace_refpos(t, my_atof(argv[2]));
+				goto exit;
+			default:
+				goto usage;
+		}
+	}
+
 check_ch_num:
-  if (argc > 2) {
-    int src = my_atoi(argv[2]);
-    if (src != 0 && src != 1)
-      goto usage;
-    trace[t].channel = src;
-  }
+	if (argc > 2)
+	{
+		const int src = my_atoi(argv[2]);
+		if (src != 0 && src != 1)
+			goto usage;
+		trace[t].channel = src;
+	}
+
 exit:
-  return;
+	return;
+
 usage:
-  shell_printf("trace {0|1|2|3|all} [%s] [src]\r\n"\
-               "trace {0|1|2|3} {%s} {value}\r\n", cmd_type_list, cmd_scale_ref_list);
+	shell_printf("trace {0|1|2|3|all} [%s] [src]\r\ntrace {0|1|2|3} {%s} {value}\r\n", cmd_type_list, cmd_scale_ref_list);
 }
 
 
@@ -2481,11 +2499,12 @@ float get_electrical_delay(void)
 
 VNA_SHELL_FUNCTION(cmd_edelay)
 {
-  if (argc < 1) {
-    shell_printf("%+f\r\n", electrical_delay);
-    return;
-  }
-  set_electrical_delay(my_atof(argv[0]));
+	if (argc < 1)
+	{
+		shell_printf("%+f\r\n", electrical_delay);
+		return;
+	}
+	set_electrical_delay(my_atof(argv[0]));
 }
 
 VNA_SHELL_FUNCTION(cmd_marker)
@@ -2589,23 +2608,25 @@ VNA_SHELL_FUNCTION(cmd_marker)
 
 VNA_SHELL_FUNCTION(cmd_frequencies)
 {
-  int i;
-  (void)argc;
-  (void)argv;
-  for (i = 0; i < sweep_points; i++) {
-    if (frequencies[i] != 0)
-      shell_printf("%u\r\n", frequencies[i]);
-  }
+	(void)argc;
+	(void)argv;
+
+	int i;
+	for (i = 0; i < sweep_points; i++)
+	{
+		if (frequencies[i] != 0)
+			shell_printf("%u\r\n", frequencies[i]);
+	}
 }
 
-static void
-set_domain_mode(uint8_t mode) // accept DOMAIN_FREQ or DOMAIN_TIME
+static void set_domain_mode(uint8_t mode) // accept DOMAIN_FREQ or DOMAIN_TIME
 {
-  if (mode != (domain_mode & DOMAIN_MODE)) {
-    domain_mode = (domain_mode & ~DOMAIN_MODE) | (mode & DOMAIN_MODE);
-    redraw_request |= REDRAW_FREQUENCY;
-    uistat.lever_mode = LM_MARKER;
-  }
+	if (mode != (domain_mode & DOMAIN_MODE))
+	{
+		domain_mode = (domain_mode & ~DOMAIN_MODE) | (mode & DOMAIN_MODE);
+		redraw_request |= REDRAW_FREQUENCY;
+		uistat.lever_mode = LM_MARKER;
+	}
 }
 
 static void
