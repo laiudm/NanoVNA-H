@@ -40,7 +40,7 @@
 #include <chprintf.h>
 
 #ifndef VERSION
-   #define VERSION "2020.Sep.04-1 by OneOfEleven from DiSlord 0.9.3.4"
+   #define VERSION "2020.Sep.07-1 by OneOfEleven from DiSlord 0.9.3.4"
 #endif
 
 #ifdef  __USE_SD_CARD__
@@ -3151,6 +3151,18 @@ static void VNAShell_executeLine(char *line)
     *lp++ = 0;
   }
   if (shell_nargs == 0) return;
+
+  {  // make the incoming command lower case
+	  lp = shell_args[0];
+	  char c;
+	  while ((c = *lp) != 0)
+	  {
+		  if (c >= 'A' && c <= 'Z')
+			 c += 'a' - 'A';	// make lower case
+		  *lp++ = c;
+	  }
+  }
+
   // Execute line
   const VNAShellCommand *scp;
   for (scp = commands; scp->sc_name != NULL; scp++) {
