@@ -1372,29 +1372,34 @@ static void draw_cell(int m, int n)
 		}
 
 		// Draw rectangular plot (40 system ticks for all screen calls)
-		if (trace_type & RECTANGULAR_GRID_MASK)
+		if ((trace_type & RECTANGULAR_GRID_MASK) != 0)
 		{
-			for (x = 0; x < w; x++)
-			{
-				if (rectangular_grid_x(x + x0))
-				{
-					for (y = 0; y < h; y++)
-						if (!(y & 3))
-							cell_buffer[(y * CELLWIDTH) + x] = c;
-				}
-			}
-
-			for (y = 0; y < h; y++)
-			{
-				if (rectangular_grid_y(y + y0))
+			#ifdef USE_GRID_ENABLE
+				if ((config.flags & CONFIG_FLAGS_GRID) == 0)
+			#endif
 				{
 					for (x = 0; x < w; x++)
 					{
-						if (!(x & 3) && (x + x0) >= CELLOFFSETX && (x + x0) <= (WIDTH + CELLOFFSETX))
-							cell_buffer[(y * CELLWIDTH) + x] = c;
+						if (rectangular_grid_x(x + x0))
+						{
+							for (y = 0; y < h; y++)
+								if (!(y & 3))
+									cell_buffer[(y * CELLWIDTH) + x] = c;
+						}
+					}
+
+					for (y = 0; y < h; y++)
+					{
+						if (rectangular_grid_y(y + y0))
+						{
+							for (x = 0; x < w; x++)
+							{
+								if (!(x & 3) && (x + x0) >= CELLOFFSETX && (x + x0) <= (WIDTH + CELLOFFSETX))
+									cell_buffer[(y * CELLWIDTH) + x] = c;
+							}
+						}
 					}
 				}
-			}
 		}
 
 		// Smith greed line (1000 system ticks for all screen calls)

@@ -42,6 +42,7 @@ uistat_t uistat =
 
 #define INTEGRATOR_MENU_DATA      2
 #define LC_MATCHING_MENU_DATA     3
+#define GRID_MENU_DATA            4
 
 #define XY_TOUCH_SCALE            16
 
@@ -1093,12 +1094,25 @@ static void menu_bandwidth_cb(int item, uint8_t data)
    static void menu_lc_match_cb(int item, uint8_t data)
    {
       (void)item;
-        (void)data;
+      (void)data;
 
       config.flags ^= CONFIG_FLAGS_LC_MATCH;
 
       if (config.flags & CONFIG_FLAGS_LC_MATCH)
          lc_match_process();
+
+      request_to_redraw_grid();
+      draw_menu();
+   }
+#endif
+
+#ifdef USE_GRID_ENABLE
+   static void menu_grid_cb(int item, uint8_t data)
+   {
+      (void)item;
+      (void)data;
+
+      config.flags ^= CONFIG_FLAGS_GRID;
 
       request_to_redraw_grid();
       draw_menu();
@@ -2027,6 +2041,9 @@ const menuitem_t menu_display2[] = {
    #ifdef USE_LC_MATCHING
       { MT_CALLBACK,  LC_MATCHING_MENU_DATA, "LC MATCHING",        menu_lc_match_cb   },
    #endif
+   #ifdef USE_GRID_ENABLE
+      { MT_CALLBACK,  GRID_MENU_DATA,        "GRID",               menu_grid_cb       },
+	#endif
    { MT_CANCEL,     255,                     S_LARROW" BACK",      NULL               },
    { MT_NONE,       255,                     NULL,                 NULL               } // sentinel
 };
@@ -2593,10 +2610,16 @@ static bool menu_item_modify_attribute(const menuitem_t *menu, int item, uint16_
       	if (menu[item].data == INTEGRATOR_MENU_DATA && (config.integrator_coeff < 1.0f))
       		modify = true;        // integrator enabled
 		#endif
+
       #ifdef USE_LC_MATCHING
          if (menu[item].data == LC_MATCHING_MENU_DATA && (config.flags & CONFIG_FLAGS_LC_MATCH))
             modify = true;     // LC matching enabled
       #endif
+
+      #ifdef USE_GRID_ENABLE
+         if (menu[item].data == GRID_MENU_DATA && (config.flags & CONFIG_FLAGS_GRID))
+            modify = true;     // grid enabled
+		#endif
    }
 
    if (menu == menu_trace && item < TRACES_MAX)

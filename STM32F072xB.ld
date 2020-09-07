@@ -14,6 +14,13 @@
     limitations under the License.
 */
 
+__main_stack_size__    = 0x200;
+__process_stack_size__ = 0x200;
+/*
+__main_stack_size__    = ${USE_EXCEPTIONS_STACKSIZE};
+__process_stack_size__ = ${USE_PROCESS_STACKSIZE};
+*/
+
 /*
  * STM32F072xB memory setup.
  */
@@ -37,8 +44,7 @@ MEMORY
     ram7    : org = 0x00000000, len = 0
 }
 
-/* For each data/text section two region are defined, a virtual region
-   and a load region (_LMA suffix).*/
+/* For each data/text section two region are defined, a virtual region and a load region (_LMA suffix).*/
 
 /* Flash region to be used for exception vectors.*/
 REGION_ALIAS("VECTORS_FLASH", flash0);
@@ -66,12 +72,10 @@ REGION_ALIAS("RAM_INIT_FLASH_LMA", flash0);
 /* Flash region to be saved calibration data */
 REGION_ALIAS("CALDATA_FLASH", flash7);
 
-/* RAM region to be used for Main stack. This stack accommodates the processing
-   of all exceptions and interrupts.*/
+/* RAM region to be used for Main stack. This stack accommodates the processing of all exceptions and interrupts.*/
 REGION_ALIAS("MAIN_STACK_RAM", ram0);
 
-/* RAM region to be used for the process stack. This is the stack used by
-   the main() function.*/
+/* RAM region to be used for the process stack. This is the stack used by the main() function.*/
 REGION_ALIAS("PROCESS_STACK_RAM", ram0);
 
 /* RAM region to be used for data segment.*/

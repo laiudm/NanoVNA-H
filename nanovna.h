@@ -44,7 +44,7 @@
 #endif
 
 // this enables showing the battery level percentage on the main screen
-#define SHOW_BATTERY_LEVEL_PERCENT
+//#define SHOW_BATTERY_LEVEL_PERCENT
 
 // Add the routines to allow s-param integration
 //#define USE_INTEGRATOR
@@ -56,6 +56,9 @@
 // uncomment to use a desired coloured menu theme, otherwise it's a grey theme
 //#define MENU_THEME_BLUE
 #define MENU_THEME_WHITE
+
+// allow the user to turn the background grid on/off
+#define USE_GRID_ENABLE
 
 // ****************************
 
@@ -502,6 +505,7 @@ extern int16_t area_height;
 
 // config.flags
 #define CONFIG_FLAGS_LC_MATCH   (1u << 0)
+#define CONFIG_FLAGS_GRID       (1u << 1)
 
 #define TRACES_MAX              4
 #define MARKERS_MAX             4
